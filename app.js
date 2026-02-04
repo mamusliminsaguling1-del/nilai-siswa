@@ -1,70 +1,64 @@
 const BACKEND_URL = "https://script.google.com/macros/s/AKfycby2vXNNjbTZFBy5mvj6eRy48ig0JT4dx6sggp9FGeDpR-VCJem8AIDLCKLeEIDz7HsR/exec";
 
-let currentEmail = "";
-
 function login() {
-  const email = document.getElementById("email").value.trim().toLowerCase();
+  const email = document.getElementById("email").value.trim();
   const accessCode = document.getElementById("accessCode").value.trim();
+  const messageEl = document.getElementById("loginMessage");
 
-  fetch(`${BACKEND_URL}?action=login&email=${email}&access_code=${accessCode}`)
+  messageEl.textContent = "";
+
+  if (!email || !accessCode) {
+    messageEl.textContent = "Email and access code are required.";
+    return;
+  }
+
+  fetch(`${BACKEND_URL}?action=login&email=${encodeURIComponent(email)}&access_code=${encodeURIComponent(accessCode)}`)
     .then(res => res.json())
     .then(data => {
-      if (data.success) {
-        currentEmail = email;
-        loadDashboard();
-      } else {
-        document.getElementById("loginMessage").innerText = data.message;
+      if (!data.success) {
+        messageEl.textContent = "Login failed.";
+        return;
       }
+
+      showDashboard(data, email);
+    })
+    .catch(() => {
+      messageEl.textContent = "Connection error.";
     });
 }
 
-function loadDashboard() {
-  fetch(`${BACKEND_URL}?action=dashboard&email=${currentEmail}`)
-    .then(res => res.json())
-    .then(data => {
-      if (!data.success) return;
+function showDashboard(data, myEmail) {
+  document.getElementById("loginSection").classList.add("hidden");
+  document.getElementById("dashboardSection").classList.remove("hidden");
 
-      document.getElementById("loginSection").classList.add("d-none");
-      document.getElementById("dashboardSection").classList.remove("d-none");
+  // Fill summary
+  document.getElementById("myName").textContent =
+    `${data.myData["Nama Depan"]} ${data.myData["Nama akhir"]}`;
 
-      renderRanking(data.ranking);
-      renderMyDetail(data.myData);
-    });
-}
+  document.getElementById("myTotal").textContent =
+    data.myData["Total kursus (Riil)"];
 
-function renderRanking(ranking) {
-  const tbody = document.getElementById("rankingTable");
-  tbody.innerHTML = "";
+  const myRankObj = data.ranking.find(r => r.email.toLowerCase() === myEmail.toLowerCase());
+  document.getElementById("myRank").textContent = myRankObj ? myRankObj.rank : "-";
 
-  ranking.forEach(row => {
+  // Fill ranking table
+  const table = document.getElementById("rankingTable");
+  table.innerHTML = "";
+
+  data.ranking.forEach(item => {
     const tr = document.createElement("tr");
 
-    if (row.email === currentEmail) {
-      tr.classList.add("table-warning");
+    if (item.email.toLowerCase() === myEmail.toLowerCase()) {
+      tr.classList.add("highlight-row");
     }
 
     tr.innerHTML = `
-      <td>${row.rank}</td>
-      <td>${row.name}</td>
-      <td>${row.total}</td>
+      <td>${item.rank}</td>
+      <td>${item.name}</td>
+      <td>${item.email}</td>
+      <td>${item.total}</td>
     `;
 
-    tbody.appendChild(tr);
+    table.appendChild(tr);
   });
-}
-
-function renderMyDetail(detail) {
-  const tbody = document.getElementById("myDetail");
-  tbody.innerHTML = "";
-
-  for (const key in detail) {
-    if (key === "Alamat Email") continue;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <th>${key}</th>
-      <td>${detail[key]}</td>
-    `;
-    tbody.appendChild(tr);
-  }
 }
