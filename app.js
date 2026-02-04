@@ -15,13 +15,16 @@ function login() {
   fetch(`${BACKEND_URL}?action=login&email=${encodeURIComponent(email)}&access_code=${encodeURIComponent(accessCode)}`)
     .then(res => res.json())
     .then(data => {
+      console.log("FULL RESPONSE:", data);
+    
       if (!data.success) {
         messageEl.textContent = "Login failed.";
         return;
       }
-
+    
       showDashboard(data, email);
     })
+
     .catch(() => {
       messageEl.textContent = "Connection error.";
     });
@@ -62,3 +65,4 @@ function showDashboard(data, myEmail) {
     table.appendChild(tr);
   });
 }
+
